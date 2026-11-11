@@ -4,7 +4,7 @@ A [Home Assistant](https://www.home-assistant.io/) integration for **one ON/OFF 
 
 The controller provides a **Control mode** selector with **Auto**, **Manual ON**, and **Manual OFF**, plus demand and decision diagnostics. It has no bundled dashboard card; use Home Assistant's standard cards.
 
-> **Experimental: start in monitor-only mode.** This is not a certified safety controller. Never bypass boiler controls, pump overrun, overtemperature or frost protection, or mixing-valve safeguards. Have the relay wiring and settings checked by a qualified heating technician before enabling live control.
+> **Start in monitor-only mode.** This is not a certified safety controller. Never bypass boiler controls, pump overrun, overtemperature or frost protection, or mixing-valve safeguards. Have the relay wiring and settings checked by a qualified heating technician before enabling live control.
 
 ## Requirements
 
@@ -123,7 +123,7 @@ A single shared relay cannot maintain an exact range in every room. Correct circ
 | Start threshold | `0.20` | Demand needed to start before outdoor adjustment. |
 | Stop threshold | `-0.10` | Demand that requests a normal stop. |
 | Maximum overshoot | 1.0°C | Excess above any room maximum that activates the overheat guard. |
-| Sensor reporting timeout | 15 minutes | Maximum time since every required sensor last reported. |
+| Sensor reporting timeout | 4 hours | Maximum time since every required sensor last reported; configurable from 1 minute to 24 hours. |
 | Healthy-input recovery time | 5 minutes | Continuous valid-input period required after a fault. |
 
 Use the timings required by the boiler manufacturer. The boiler may cycle its burner internally while demand remains ON.
@@ -146,7 +146,7 @@ Cycle timers use confirmed relay state changes. Cold starts require a fresh OFF 
 
 ## Sensor reporting
 
-Freshness uses Home Assistant's `last_reported` timestamp. An unchanged temperature stays healthy while its sensor continues reporting. A frozen value becomes a fault after the timeout. Sensors that report only when values change need a suitably large timeout or different hardware.
+Freshness uses Home Assistant's `last_reported` timestamp. An unchanged temperature stays healthy while its sensor continues reporting. A frozen value becomes a fault after the timeout. Sensors that report only when values change need a suitably large timeout or different hardware. Longer timeouts permit decisions based on older temperatures; use the shortest practical timeout for each installation.
 
 This verifies reports inside Home Assistant, not the physical measurement path. A source integration republishing cached values must not be treated as proof of fresh measurements.
 

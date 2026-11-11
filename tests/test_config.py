@@ -38,6 +38,13 @@ def test_default_options_are_fail_monitor_only():
     assert normalize_options({})["monitor_only"] is True
     assert normalize_options({})["min_on_minutes"] == 10
     assert normalize_options({})["min_off_minutes"] == 10
+    assert normalize_options({})["sensor_timeout_minutes"] == 240
+
+
+def test_sensor_timeout_allows_up_to_24_hours():
+    assert normalize_options({"sensor_timeout_minutes": 1440})["sensor_timeout_minutes"] == 1440
+    with pytest.raises(ValueError, match="sensor_timeout_minutes must be between"):
+        normalize_options({"sensor_timeout_minutes": 1441})
 
 
 async def test_options_flow_normalizes_numeric_strings(hass):

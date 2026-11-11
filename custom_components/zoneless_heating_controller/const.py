@@ -20,7 +20,7 @@ DEFAULT_OPTIONS = {
     "start_threshold": 0.20,
     "stop_threshold": -0.10,
     "max_overshoot": 1.0,
-    "sensor_timeout_minutes": 15,
+    "sensor_timeout_minutes": 240,
     "healthy_minutes": 5,
 }
 
@@ -30,7 +30,7 @@ OPTION_RANGES = {
     "start_threshold": (0.01, 1.0, float),
     "stop_threshold": (-1.0, 0.0, float),
     "max_overshoot": (0.2, 4.0, float),
-    "sensor_timeout_minutes": (1, 180, int),
+    "sensor_timeout_minutes": (1, 1440, int),
     "healthy_minutes": (1, 60, int),
 }
 
