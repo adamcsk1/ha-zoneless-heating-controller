@@ -1,30 +1,11 @@
 """UI configuration for Zoneless Heating Controller."""
 
-import math
-
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
 from .config import normalize_options
-from .const import DEFAULT_OPTIONS, DOMAIN
-
-
-def _number(value, whole=False):
-    """Reject booleans, fractions for timers, and non-finite form values."""
-    if isinstance(value, bool):
-        raise vol.Invalid("Must be a number, not a boolean")
-    try:
-        number = float(value)
-    except (TypeError, ValueError) as err:
-        raise vol.Invalid("Must be numeric") from err
-    if not math.isfinite(number) or (whole and not number.is_integer()):
-        raise vol.Invalid("Must be a finite whole number" if whole else "Must be finite")
-    return int(number) if whole else number
-
-
-def _whole_number(value):
-    return _number(value, whole=True)
+from .const import DEFAULT_OPTIONS, DOMAIN, OPTION_RANGES
 
 
 class ZonelessHeatingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -92,18 +73,14 @@ class ZonelessHeatingOptionsFlow(config_entries.OptionsFlow):
             vol.Optional("rooms_json", default=options.get("rooms_json", "[]")): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
-            vol.Optional("min_on_minutes", default=options.get("min_on_minutes", DEFAULT_OPTIONS["min_on_minutes"])):
-                vol.All(_whole_number, vol.Range(min=1, max=180)),
-            vol.Optional("min_off_minutes", default=options.get("min_off_minutes", DEFAULT_OPTIONS["min_off_minutes"])):
-                vol.All(_whole_number, vol.Range(min=1, max=180)),
-            vol.Optional("start_threshold", default=options.get("start_threshold", DEFAULT_OPTIONS["start_threshold"])):
-                vol.All(_number, vol.Range(min=0.01, max=1)),
-            vol.Optional("stop_threshold", default=options.get("stop_threshold", DEFAULT_OPTIONS["stop_threshold"])):
-                vol.All(_number, vol.Range(min=-1, max=0)),
-            vol.Optional("max_overshoot", default=options.get("max_overshoot", DEFAULT_OPTIONS["max_overshoot"])):
-                vol.All(_number, vol.Range(min=0.2, max=4)),
-            vol.Optional("sensor_timeout_minutes", default=options.get("sensor_timeout_minutes", DEFAULT_OPTIONS["sensor_timeout_minutes"])):
-                vol.All(_whole_number, vol.Range(min=1, max=180)),
-            vol.Optional("healthy_minutes", default=options.get("healthy_minutes", DEFAULT_OPTIONS["healthy_minutes"])):
-                vol.All(_whole_number, vol.Range(min=1, max=60)),
+            **{
+                vol.Optional(key, default=options.get(key, DEFAULT_OPTIONS[key])): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=minimum, max=maximum,
+                        step=1 if value_type is int else "any",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                )
+                for key, (minimum, maximum, value_type) in OPTION_RANGES.items()
+            },
         })

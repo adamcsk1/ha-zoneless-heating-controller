@@ -2,10 +2,12 @@
 
 import json
 
+import probatio
 import pytest
+from homeassistant.helpers import config_validation as cv
 
 from custom_components.zoneless_heating_controller.config import normalize_options, normalize_rooms
-from custom_components.zoneless_heating_controller.const import DOMAIN
+from custom_components.zoneless_heating_controller.const import DOMAIN, OPTION_RANGES
 
 VALID_ROOM = {"name": "Room", "entity_id": "sensor.room", "min": 18, "preferred": 21, "max": 24, "weight": 1}
 
@@ -58,3 +60,25 @@ async def test_options_flow_normalizes_numeric_strings(hass):
     })
     assert result["type"] == "create_entry"
     assert json.loads(result["data"]["rooms_json"])[0]["min"] == 18
+
+
+async def test_options_form_serializes_for_frontend(hass):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(domain=DOMAIN, data={}, options={"min_on_minutes": 25})
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    fields = probatio.to_field_list(result["data_schema"], custom_serializer=cv.custom_serializer)
+    fields = {field["name"]: field for field in fields}
+    assert fields["min_on_minutes"]["default"] == 25
+    for key, (minimum, maximum, value_type) in OPTION_RANGES.items():
+        number = fields[key]["selector"]["number"]
+        assert number["min"] == minimum
+        assert number["max"] == maximum
+        assert number["step"] == (1 if value_type is int else "any")
+
+
+@pytest.mark.parametrize("value", [True, 1.5, "nan", "inf", 0, 181])
+def test_invalid_timer_options_rejected(value):
+    with pytest.raises(ValueError):
+        normalize_options({"min_on_minutes": value})
