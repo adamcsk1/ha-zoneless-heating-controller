@@ -1,11 +1,27 @@
 """UI configuration for Zoneless Heating Controller."""
 
+import math
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
 from .config import normalize_options
 from .const import DEFAULT_OPTIONS, DOMAIN, OPTION_RANGES
+
+
+class StrictNumberSelector(selector.NumberSelector):
+    """Keep numeric validation strict while exposing a standard number field."""
+
+    def __call__(self, value):
+        if isinstance(value, bool):
+            raise vol.Invalid("Must be a number, not a boolean")
+        number = super().__call__(value)
+        if not math.isfinite(number):
+            raise vol.Invalid("Must be finite")
+        if self.config["step"] == 1 and not number.is_integer():
+            raise vol.Invalid("Must be a whole number")
+        return number
 
 
 class ZonelessHeatingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -74,7 +90,7 @@ class ZonelessHeatingOptionsFlow(config_entries.OptionsFlow):
                 selector.TextSelectorConfig(multiline=True)
             ),
             **{
-                vol.Optional(key, default=options.get(key, DEFAULT_OPTIONS[key])): selector.NumberSelector(
+                vol.Optional(key, default=options.get(key, DEFAULT_OPTIONS[key])): StrictNumberSelector(
                     selector.NumberSelectorConfig(
                         min=minimum, max=maximum,
                         step=1 if value_type is int else "any",
