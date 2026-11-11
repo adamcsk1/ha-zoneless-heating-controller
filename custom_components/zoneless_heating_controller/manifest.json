@@ -1,6 +1,7 @@
 {
   "domain": "zoneless_heating_controller",
   "name": "Zoneless Heating Controller",
+  "categories": ["climate.thermostats_heating"],
   "codeowners": ["@adamcsk1"],
   "config_flow": true,
   "documentation": "https://github.com/adamcsk1/ha-zoneless-heating-controller",
