@@ -64,6 +64,24 @@ async def test_sensor_fault_turns_off_and_delays_recovery(hass, options, relay_c
     assert relay_calls == ["turn_off", "turn_on"]
 
 
+async def test_monitor_only_retains_sensor_fault_diagnostics(hass, options):
+    options["monitor_only"] = True
+    _, controller = await setup_controller(hass, options)
+    assert controller.reason == "Minimum OFF time"
+
+    hass.states.async_set(ROOM, "unavailable", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    assert controller.demand is None
+    assert controller.reason == "Sensor fault"
+    assert ROOM in controller.sensor_fault
+    assert "monitor only" in controller.detail
+
+    hass.states.async_set(ROOM, "18", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    assert controller.demand == 1
+    assert controller.reason == "Recovery wait"
+
+
 async def test_stale_sensor_turns_off(hass, options, relay_calls, freezer):
     options["sensor_timeout_minutes"] = 1
     _, controller = await setup_controller(hass, options, relay_state="on")
@@ -133,7 +151,8 @@ async def test_monitor_only_never_calls_relay(hass, options, relay_calls, freeze
     hass.states.async_set(ROOM, "unavailable")
     await advance(hass, freezer, 61)
     assert relay_calls == []
-    assert controller.reason == "Monitor only"
+    assert controller.reason == "Sensor fault"
+    assert controller.detail.endswith("; monitor only: no relay commands")
 
 
 async def test_fahrenheit_sensor_is_converted(hass, options, relay_calls):

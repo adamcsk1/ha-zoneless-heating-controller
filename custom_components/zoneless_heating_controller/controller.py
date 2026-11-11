@@ -611,8 +611,7 @@ class HeatingController:
             self.reason = "Waiting for relay OFF"
         self.request_heat = desired
         if self.monitor_only:
-            self.reason = "Monitor only"
-            self.detail = f"{self.reason}: no relay commands; calculated state is {'ON' if desired else 'OFF'}"
+            self.detail = f"{self.detail}; monitor only: no relay commands"
         else:
             await self._apply_command(desired, actual, now)
         self._request_save()

@@ -1,229 +1,165 @@
 # Zoneless Heating Controller
 
-A Home Assistant custom integration for **one ON/OFF boiler-demand relay**, one outdoor temperature sensor, and multiple rooms with manually balanced underfloor-heating circuits.
+A [Home Assistant](https://www.home-assistant.io/) integration for **one ON/OFF boiler-demand relay**, an outdoor temperature sensor, and rooms with manually balanced heating circuits. Room temperatures produce a weighted heating demand with hysteresis, outdoor compensation, and anti-cycling protection.
 
-[![Validate](https://github.com/adamcsk1/ha-zoneless-heating-controller/actions/workflows/validate.yml/badge.svg)](https://github.com/adamcsk1/ha-zoneless-heating-controller/actions/workflows/validate.yml)
-[![HACS](https://img.shields.io/badge/HACS-Custom_repository-41BDF5.svg)](https://www.hacs.xyz/docs/use/repositories/type/integration/)
+The controller provides a **Control mode** selector with **Auto**, **Manual ON**, and **Manual OFF**, plus demand and decision diagnostics. It has no bundled dashboard card; use Home Assistant's standard cards.
 
-> **Experimental — start in monitor-only mode.** This is not a certified safety controller. Never use it to bypass boiler controls, pump overrun, overtemperature protection, frost protection, or mixing-valve safeguards. Have relay wiring and settings reviewed by a qualified heating technician before enabling live control.
+> **Experimental: start in monitor-only mode.** This is not a certified safety controller. Never bypass boiler controls, pump overrun, overtemperature or frost protection, or mixing-valve safeguards. Have the relay wiring and settings checked by a qualified heating technician before enabling live control.
 
-## Features
+## Requirements
 
-- Weighted room-temperature demand with hysteresis.
-- Modest outdoor-temperature compensation.
-- Separate minimum ON and OFF periods to prevent boiler-demand short cycling.
-- Persistent **Auto**, **Manual ON**, and **Manual OFF** modes.
-- Immediate demand withdrawal for sensor faults, overheating, Manual OFF, and graceful shutdown.
-- Sensor reporting timeouts and delayed recovery after faults.
-- Celsius, Fahrenheit, and Kelvin sensor support.
-- Relay command timeouts, state confirmation, and bounded OFF retries.
-- Monitor-only mode that never sends relay commands.
-- Demand and decision diagnostics.
-- UI configuration; no YAML or external binary helper required.
+- Home Assistant **2026.10.0 or newer**
+- A manufacturer-supported heating-demand input and compatible relay; **not boiler mains power**
+- Independent boiler anti-cycling, pump-overrun, overtemperature, and frost protection
+- Temperature sensors that report periodically, even when their values do not change
+- No other controller or automation operating the same relay
 
-## How it works
+The integration cannot guarantee OFF after a Home Assistant crash, power failure, network failure, or welded relay contact. Prefer a relay that defaults to OFF after power loss and has a device-side watchdog.
 
-Each room produces a normalized score from `-1` to `+1`:
+## Install with HACS
 
-- `+1`: room is at or below its minimum temperature.
-- `0`: room is at its preferred temperature.
-- `-1`: room is at or above its maximum temperature.
+1. Add `https://github.com/adamcsk1/ha-zoneless-heating-controller` as a custom **Integration** repository in [HACS](https://www.hacs.xyz/), or use [this link](https://my.home-assistant.io/redirect/hacs_repository/?owner=adamcsk1&repository=ha-zoneless-heating-controller&category=integration).
+2. Install **Zoneless Heating Controller** and restart Home Assistant.
+3. Go to **Settings > Devices & services > Add integration**, then select **Zoneless Heating Controller**.
+4. Select the boiler-demand switch and outdoor temperature sensor.
 
-Scores are weighted by room importance. Auto mode requests heat above the start threshold and stops below the stop threshold. Between them, hysteresis preserves the current heating state.
+Restart Home Assistant after every update before opening the configuration dialog.
 
-Outdoor temperature adjusts the start threshold by `-0.05` below 0°C and by `+0.05` at or above 10°C. Room settings are always entered in Celsius; sensor readings are converted to Celsius.
+### Manual install
 
-## Safety and hardware requirements
+Copy `custom_components/zoneless_heating_controller/` into `/config/custom_components/zoneless_heating_controller/`, restart Home Assistant, then add the integration through **Settings > Devices & services**.
 
-**Required before live control:**
+## Quick start
 
-1. A manufacturer-supported heating-demand input and compatible relay. The relay must control demand, **not boiler mains power**.
-2. Independent boiler anti-cycling, pump-overrun, overtemperature, and frost-protection systems.
-3. Local temperature sensors that report periodically, even when their values do not change.
-4. Preferably a relay that returns to OFF after power loss and has a device-side watchdog/auto-OFF if Home Assistant stops communicating.
-5. Only one controller or automation operating the demand relay.
+1. Leave **Monitor only** enabled while checking readings and diagnostics.
+2. Open the integration's **Configure** dialog and add your rooms using the JSON below.
+3. Add the **Control mode**, **Heating demand**, and **Decision reason** entities to a dashboard. The physical relay should also be visible.
+4. Compare calculations with your existing heating behavior. Check that every sensor reports more often than the configured timeout.
+5. Disable other automations controlling the relay before turning off monitor-only mode. Keep independent boiler safety controls enabled.
 
-The integration can request OFF only while Home Assistant, the relay integration, and communication still work. A Home Assistant crash, network failure, power failure, or welded relay contact requires independent hardware protection. The selected mode and cycle timestamps cannot protect against those failures by themselves.
+Changing from live control to monitor-only first withdraws active demand and requires confirmed OFF. If OFF confirmation fails, the option change is refused; Manual OFF retries remain active and Auto or Manual ON changes are rejected until the old controller is discarded.
 
-Exact relay compatibility and minimum cycle timings depend on the boiler manual. The boiler may cycle its burner internally while demand remains ON.
+### Room configuration
 
-## Installation
-
-### HACS custom repository
-
-This repository follows the HACS integration layout. It is not automatically included in the HACS default catalog.
-
-1. Ensure Home Assistant **2026.10.0 or newer** and HACS are installed.
-2. Open [Add custom repository to HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=adamcsk1&repository=ha-zoneless-heating-controller&category=integration), or manually add `https://github.com/adamcsk1/ha-zoneless-heating-controller` as an **Integration** custom repository.
-3. Download **Zoneless Heating Controller**.
-4. Restart Home Assistant.
-5. Go to **Settings → Devices & services → Add integration → Zoneless Heating Controller**.
-
-### Manual installation
-
-1. Copy `custom_components/zoneless_heating_controller` into `/config/custom_components/`.
-2. Restart Home Assistant.
-3. Add the integration from **Settings → Devices & services**.
-
-## Initial setup
-
-1. Select the **boiler-demand switch** and **outdoor temperature sensor**.
-2. Open the integration's **Configure** dialog.
-3. Add rooms using the JSON format below.
-4. Leave **Monitor only** enabled initially.
-5. Add the demand and decision-reason sensors to a dashboard and compare calculations with your existing heating behavior.
-6. Check that all sensors report more frequently than the configured timeout.
-7. Disable existing boiler-demand automations before turning off monitor-only mode. Do not disable independent boiler safety controls.
-
-Changing from live control to monitor-only first withdraws active demand and requires confirmed OFF before the option is saved. Any uncertain ON delivery must also be canceled by a successful OFF. If confirmation fails, the option change is refused and the existing live controller remains visible in Manual OFF with bounded OFF retries. During this transition, Auto and Manual ON changes are rejected until the old controller is discarded.
-
-## Room configuration
+Paste a JSON array into **Rooms JSON**. Replace the entity IDs and temperatures with your requirements.
 
 ```json
 [
   {
     "name": "Living room",
     "entity_id": "sensor.living_temperature",
-    "min": 20.5,
-    "preferred": 21.5,
-    "max": 22.5,
-    "weight": 1.5
+    "min": 20,
+    "preferred": 21,
+    "max": 22,
+    "weight": 2
   },
   {
     "name": "Bedroom",
     "entity_id": "sensor.bedroom_temperature",
-    "min": 18.0,
-    "preferred": 19.0,
-    "max": 21.0,
-    "weight": 1.0
-  },
-  {
-    "name": "Bathroom",
-    "entity_id": "sensor.bathroom_temperature",
-    "min": 21.0,
-    "preferred": 22.0,
-    "max": 24.0,
-    "weight": 1.2
+    "min": 18,
+    "preferred": 19,
+    "max": 21,
+    "weight": 1
   }
 ]
 ```
 
 | Field | Meaning |
 |---|---|
-| `name` | Non-empty display name used in diagnostics. |
-| `entity_id` | Temperature sensor. Each sensor may appear only once. |
+| `name` | Display name used in diagnostics. |
+| `entity_id` | Unique temperature sensor entity ID. |
 | `min` | Temperature mapped to full heating demand. |
 | `preferred` | Temperature mapped to neutral demand. |
 | `max` | Temperature mapped to full stop demand. |
-| `weight` | Relative room importance, greater than 0 and at most 100. |
+| `weight` | Room priority, greater than 0 and at most 100. Higher values increase influence. |
 
-Require `min < preferred < max`. Numeric JSON strings are accepted and normalized. Non-finite values, booleans used as numbers, malformed JSON, invalid entities, and duplicate room sensors are rejected.
+Room values are in Celsius and must satisfy `min < preferred < max`. Sensor readings in Celsius, Fahrenheit, or Kelvin are converted automatically. Malformed JSON, invalid sensors, duplicate room sensors, and non-finite or boolean numbers are rejected.
 
-## Settings
+### Dashboard and control modes
 
-| Setting | Default | Purpose |
-|---|---:|---|
-| Monitor only | `true` | Calculate diagnostics without sending any relay commands. |
-| Minimum normal ON time | 10 minutes | Prevents normal Auto stops from shortening a heating cycle. |
-| Minimum OFF time | 10 minutes | Delays every new ON request after confirmed or uncertain OFF history. |
-| Start threshold | `0.20` | Demand needed to start heating before outdoor adjustment. |
-| Stop threshold | `-0.10` | Demand that requests a normal stop. |
-| Maximum overshoot | 1.0°C | Excess above any room maximum that activates the overheat guard. |
-| Sensor reporting timeout | 15 minutes | Maximum time since every required sensor last reported. |
-| Healthy-input recovery time | 5 minutes | Continuous valid-input period required after a fault. |
-
-Customized timings are retained when options are saved. Earlier MVP defaults were 20 minutes ON and 15 minutes OFF; new installations use 10 minutes for both. Increase these values if required by the boiler manufacturer.
-
-### Freshness versus temperature changes
-
-Freshness uses Home Assistant's `last_reported` timestamp. An unchanged temperature remains healthy if the sensor continues reporting. A frozen numeric value becomes a fault when no reports arrive before the timeout. Future timestamps caused by backward clock adjustments are also faults. Sensors that report only on temperature changes need a suitably large timeout or different hardware. This verifies freshness of reports inside Home Assistant; a source integration that republishes cached values must not be treated as proof of fresh physical measurements.
-
-## Control modes
-
-Use the **Control mode** selector on the integration device page or a dashboard.
-
-| Mode | Behavior |
-|---|---|
-| **Auto** | Uses room demand, outdoor compensation, hysteresis, and cycle limits. |
-| **Manual ON** | Requests continuous demand and suspends automatic comfort-demand decisions. Sensor faults, reporting timeouts, overheat protection, minimum OFF, and recovery delays still apply. |
-| **Manual OFF** | Immediately withdraws demand and keeps automatic control suspended. |
-
-The selected mode persists across restart and reload. Changing modes never resets confirmed cycle timers. Manual ON means heating **demand**, not a guarantee that the boiler burner is running.
-
-The original **Controller enabled** switch remains for compatibility. ON selects Auto; OFF selects Manual OFF. The switch is shown as enabled in Manual ON as well.
-
-## Anti-cycling and fault behavior
-
-Cycle timing starts from confirmed relay state changes, not service requests. Attribute-only updates do not reset it. Timestamps are persisted, but a cold Home Assistant start never trusts stored relay history. Cold start requires a new OFF observation and fresh minimum OFF period, including when storage is missing or malformed. Every completed reload also starts a fresh OFF observation.
-
-| Situation | Live-control behavior |
-|---|---|
-| Normal Auto stop | Waits for minimum ON time. |
-| Any new ON request | Waits for minimum OFF time and recalculates current demand before acting. |
-| Invalid, unavailable, or expired required sensor | Requests OFF immediately and latches shutdown until OFF is confirmed; then recovery and minimum OFF apply. |
-| Room overheat guard | Requests OFF immediately, including during minimum ON. |
-| Manual OFF | Requests OFF immediately. |
-| Relay unavailable or command unconfirmed | Shows a fault; OFF requests are retried every 30 seconds. Failed or uncertain ON attempts require a successful canceling OFF and a full OFF period before another attempt. |
-| Inputs recover after a fault | Waits for the complete healthy-input period and minimum OFF period. |
-| Integration unload or graceful HA stop | Attempts OFF before releasing control. Failed unload stays active in Manual OFF and keeps retrying. |
-| Monitor-only | Never sends relay commands, regardless of mode or fault. |
-
-A fault can shorten an ON cycle, but it cannot cause an immediate restart. Normal stops during an unconfirmed ON command wait for confirmation or timeout; if the relay turns ON late, minimum ON still applies.
-
-## Entities
-
-| Entity | Purpose |
-|---|---|
-| **Control mode** | Select Auto, Manual ON, or Manual OFF. |
-| **Controller enabled** | Backwards-compatible Auto/Manual OFF switch. |
-| **Heating demand** | Weighted normalized demand, normally from `-1` to `+1`. |
-| **Decision reason** | Short current state, such as `Heating demand`, `Minimum OFF time`, `Recovery wait`, or `Sensor fault`. |
-
-Decision-reason attributes include the selected mode, requested and reported relay states, detailed fault, stale/invalid sensor, overheated rooms, pending command, command error, cycle timestamps, recovery deadline, and next scheduled evaluation.
-
-Example dashboard card:
+Add an **Entities** card and select the integration's **Control mode**, **Heating demand**, and **Decision reason** entities, or edit this example to match your entity IDs:
 
 ```yaml
 type: entities
 title: Heating controller
 entities:
   - entity: select.zoneless_heating_control_mode
+    name: Mode
   - entity: sensor.zoneless_heating_heating_demand
+    name: Heating demand
   - entity: sensor.zoneless_heating_decision_reason
+    name: Status
   - entity: switch.boiler_demand
+    name: Physical relay
 ```
 
-Adjust entity IDs to your installation. Always show the physical relay state alongside the requested state.
+The **Control mode** selector is also available under the integration entry's device and entity list. No extra dashboard integration is needed.
 
-## Troubleshooting
+| Mode | Behavior |
+|---|---|
+| **Auto** | Uses room demand, outdoor compensation, hysteresis, and cycle limits. |
+| **Manual ON** | Requests continuous heating demand; safety checks, recovery, and cycle delays still apply. |
+| **Manual OFF** | Immediately withdraws demand and suspends automatic control. |
 
-- **Minimum OFF time:** wait for the displayed deadline. Restarting or changing modes does not bypass it.
-- **Recovery wait:** all required sensors and the relay must be healthy continuously for the configured recovery period.
-- **Sensor fault:** inspect `sensor_fault` and `detail` attributes. Check units, availability, numeric value, and report freshness.
-- **Relay fault or command error:** check the relay integration and physical relay. OFF retries continue, but independent hardware protection is still required.
-- **Manual ON does not start immediately:** minimum OFF, recovery, and overheat/sensor protections still apply.
-- **Unexpected heating:** use Manual OFF and verify the physical relay state. Check for another automation controlling the same relay. If necessary, use the manufacturer-approved emergency procedure—not this software alone.
+The selected mode persists across restarts and reloads. **Monitor only** prevents relay commands in every mode. The legacy **Controller enabled** switch remains: ON selects Auto; OFF selects Manual OFF.
 
-## Removal
+## How it works
 
-1. Select **Manual OFF** and verify that the physical relay is OFF.
-2. Remove the integration entry.
-3. Remove the integration from HACS, or delete its directory for a manual installation.
-4. Restart Home Assistant and restore an approved alternative heating controller.
+Each room produces a score from `-1` to `+1`:
 
-The integration attempts OFF during unload. If OFF cannot be confirmed, unload is refused and Manual OFF retries remain active so failure is visible rather than silently orphaned. A state-storage timeout also refuses normal unload, retaining the existing controller and writer instead of creating overlapping replacements. Final Home Assistant shutdown remains bounded.
+- `+1`: at or below its minimum temperature.
+- `0`: at its preferred temperature.
+- `-1`: at or above its maximum temperature.
 
-## Development and validation
+Scores are weighted by room priority. Auto starts above the start threshold and stops below the stop threshold; hysteresis retains the current state between them. Outdoor temperature adjusts the start threshold by `-0.05` below 0°C and `+0.05` at or above 10°C.
 
-```bash
-python -m pip install -r requirements_test.txt
-pytest
-```
+A single shared relay cannot maintain an exact range in every room. Correct circuit balancing remains necessary.
 
-Tests cover demand validation, unit conversion, anti-cycling, stale sensors, overheat shutdown, recovery, manual modes, persistence, failed commands, and command/disable races. GitHub Actions runs tests, HACS validation, and Hassfest.
+| Setting | Default | Purpose |
+|---|---:|---|
+| Monitor only | `true` | Calculate diagnostics without sending relay commands. |
+| Minimum normal ON time | 10 minutes | Prevents normal Auto stops from shortening a heating cycle. |
+| Minimum OFF time | 10 minutes | Delays every new ON request after confirmed or uncertain OFF history. |
+| Start threshold | `0.20` | Demand needed to start before outdoor adjustment. |
+| Stop threshold | `-0.10` | Demand that requests a normal stop. |
+| Maximum overshoot | 1.0°C | Excess above any room maximum that activates the overheat guard. |
+| Sensor reporting timeout | 15 minutes | Maximum time since every required sensor last reported. |
+| Healthy-input recovery time | 5 minutes | Continuous valid-input period required after a fault. |
 
-The automated suite uses Home Assistant 2026.10.4. No physical boiler or relay has been tested. Validate on a test Home Assistant instance and have the complete heating installation checked before production use.
+Use the timings required by the boiler manufacturer. The boiler may cycle its burner internally while demand remains ON.
 
-## Support
+## Fault behavior
 
-Report issues at [GitHub Issues](https://github.com/adamcsk1/ha-zoneless-heating-controller/issues). Include the integration version, Home Assistant version, decision-reason attributes, and relevant logs. Remove personal information and never include credentials.
+| Situation | Live-control behavior |
+|---|---|
+| Invalid, unavailable, or stale required sensor | Demand becomes unknown; requests OFF immediately and waits for confirmed OFF before recovery. |
+| Room overheat guard | Requests OFF immediately, including during minimum ON. |
+| Manual OFF | Requests OFF immediately. |
+| Relay unavailable or command unconfirmed | Shows a fault; retries OFF every 30 seconds. |
+| Inputs recover after a fault | Waits for the complete healthy-input period and minimum OFF period. |
+| Integration unload or graceful HA stop | Attempts OFF before releasing control. |
+| Monitor only | Never sends relay commands, including during faults. |
+
+Sensor faults override minimum ON and apply in Manual ON. After sensors recover, heating still waits for the recovery and minimum OFF periods. The **Decision reason** sensor and its attributes identify the active fault; `sensor_fault` gives the sensor-specific cause.
+
+Cycle timers use confirmed relay state changes. Cold starts require a fresh OFF observation and full OFF period. Failed or uncertain ON attempts require a successful canceling OFF before another attempt. Unload failures retain Manual OFF retries rather than leaving an orphaned controller.
+
+## Sensor reporting
+
+Freshness uses Home Assistant's `last_reported` timestamp. An unchanged temperature stays healthy while its sensor continues reporting. A frozen value becomes a fault after the timeout. Sensors that report only when values change need a suitably large timeout or different hardware.
+
+This verifies reports inside Home Assistant, not the physical measurement path. A source integration republishing cached values must not be treated as proof of fresh measurements.
+
+## Development and support
+
+Run `python -m pip install -r requirements_test.txt`, then `pytest` and `ruff check .`. GitHub Actions also runs HACS validation and Hassfest.
+
+[Report an issue](https://github.com/adamcsk1/ha-zoneless-heating-controller/issues).
+
+When reporting an issue, include the integration version, Home Assistant version, Decision reason attributes, and relevant logs. Remove credentials and personal information.
+
+To remove the integration, select **Manual OFF**, verify the physical relay is OFF, remove its entry, uninstall it, restart Home Assistant, and restore an approved alternative heating controller.
+
+## License
+
+[MIT](LICENSE)
