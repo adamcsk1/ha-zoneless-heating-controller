@@ -1,0 +1,13 @@
+{
+  "domain": "zoneless_heating_controller",
+  "name": "Zoneless Heating Controller",
+  "categories": ["climate.thermostats_heating"],
+  "codeowners": ["@adamcsk1"],
+  "config_flow": true,
+  "documentation": "https://github.com/adamcsk1/ha-zoneless-heating-controller",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/adamcsk1/ha-zoneless-heating-controller/issues",
+  "requirements": [],
+  "version": "0.0.1"
+}

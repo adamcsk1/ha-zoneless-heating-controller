@@ -1,0 +1,68 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zoneless heating controller",
+        "data": {
+          "name": "Name",
+          "boiler_relay": "Boiler demand relay",
+          "outdoor_sensor": "Outdoor temperature sensor"
+        }
+      }
+    },
+    "error": {
+      "relay_already_configured": "This boiler demand relay is already controlled by another entry"
+    },
+    "abort": {
+      "already_configured": "This boiler demand relay is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heating settings and rooms",
+        "description": "Configure rooms_json as a JSON array. Each room needs name, entity_id, min, preferred, max, weight. Temperatures are Celsius. Start in monitor-only mode.",
+        "data": {
+          "monitor_only": "Monitor only (never operate boiler)",
+          "rooms_json": "Rooms (JSON array)",
+          "min_on_minutes": "Minimum normal ON time (minutes)",
+          "min_off_minutes": "Minimum OFF time (minutes)",
+          "start_threshold": "Start demand threshold",
+          "stop_threshold": "Stop demand threshold",
+          "max_overshoot": "Overshoot above room maximum (°C)",
+          "sensor_timeout_minutes": "Sensor reporting timeout (minutes)",
+          "healthy_minutes": "Continuous healthy-input time before recovery (minutes)"
+        }
+      }
+    },
+    "error": {
+      "invalid_rooms": "Invalid rooms or heating settings. Check JSON, finite numbers, entity IDs, ranges, and weights",
+      "monitor_shutdown_failed": "Monitor-only was not enabled because relay OFF could not be confirmed. The controller remains in live Manual OFF and will keep retrying"
+    }
+  },
+  "entity": {
+    "select": {
+      "mode": {
+        "name": "Control mode",
+        "state": {
+          "auto": "Auto",
+          "manual_on": "Manual ON",
+          "manual_off": "Manual OFF"
+        }
+      }
+    },
+    "switch": {
+      "enabled": {
+        "name": "Controller enabled"
+      }
+    },
+    "sensor": {
+      "demand": {
+        "name": "Heating demand"
+      },
+      "reason": {
+        "name": "Decision reason"
+      }
+    }
+  }
+}
