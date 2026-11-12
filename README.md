@@ -32,7 +32,7 @@ Copy `custom_components/zoneless_heating_controller/` into `/config/custom_compo
 ## Quick start
 
 1. Leave **Monitor only** enabled while checking readings and diagnostics.
-2. Open the integration's **Configure** dialog and add your rooms using the JSON below.
+2. Open the integration's **Configure** dialog and add your rooms using the **Rooms** editor.
 3. Add the **Control mode**, **Heating demand**, and **Decision reason** entities to a dashboard. The physical relay should also be visible.
 4. Compare calculations with your existing heating behavior. Check that every sensor reports more often than the configured timeout.
 5. Disable other automations controlling the relay before turning off monitor-only mode. Keep independent boiler safety controls enabled.
@@ -41,39 +41,20 @@ Changing from live control to monitor-only first withdraws active demand and req
 
 ### Room configuration
 
-Paste a JSON array into **Rooms JSON**. Replace the entity IDs and temperatures with your requirements.
+In **Configure > Rooms**, add a room, enter its name, select its temperature sensor, and enter its temperatures and weight. Repeat for each room, then save the configuration. Use the same editor to edit or remove rooms. Existing rooms saved by earlier versions appear automatically; no JSON or YAML editing is needed.
 
-```json
-[
-  {
-    "name": "Living room",
-    "entity_id": "sensor.living_temperature",
-    "min": 20,
-    "preferred": 21,
-    "max": 22,
-    "weight": 2
-  },
-  {
-    "name": "Bedroom",
-    "entity_id": "sensor.bedroom_temperature",
-    "min": 18,
-    "preferred": 19,
-    "max": 21,
-    "weight": 1
-  }
-]
-```
+For example, a living room might use minimum **20°C**, preferred **21°C**, maximum **22°C**, and weight **2**. A bedroom might use **18°C**, **19°C**, **21°C**, and weight **1**.
 
 | Field | Meaning |
 |---|---|
-| `name` | Display name used in diagnostics. |
-| `entity_id` | Unique temperature sensor entity ID. |
-| `min` | Temperature mapped to full heating demand. |
-| `preferred` | Temperature mapped to neutral demand. |
-| `max` | Temperature mapped to full stop demand. |
-| `weight` | Room priority, greater than 0 and at most 100. Higher values increase influence. |
+| Name | Display name used in diagnostics. |
+| Temperature sensor | Select a different temperature sensor for each room. |
+| Minimum | Temperature mapped to full heating demand. |
+| Preferred | Temperature mapped to neutral demand. |
+| Maximum | Temperature mapped to full stop demand. |
+| Weight | Room priority, greater than 0 and at most 100. Higher values increase influence. |
 
-Room values are in Celsius and must satisfy `min < preferred < max`. Sensor readings in Celsius, Fahrenheit, or Kelvin are converted automatically. Malformed JSON, invalid sensors, duplicate room sensors, and non-finite or boolean numbers are rejected.
+Room values are in Celsius and must satisfy `minimum < preferred < maximum`. Sensor readings in Celsius, Fahrenheit, or Kelvin are converted automatically. Invalid sensors, duplicate room sensors, and non-finite or boolean numbers are rejected. Validation errors identify the room number or sensor and the setting that needs correcting. Removing every room leaves the controller with a "No rooms configured" input fault and prevents heating.
 
 ### Dashboard and control modes
 

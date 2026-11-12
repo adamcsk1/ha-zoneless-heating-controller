@@ -1,5 +1,6 @@
 """UI configuration for Zoneless Heating Controller."""
 
+import json
 import math
 
 import voluptuous as vol
@@ -67,9 +68,10 @@ class ZonelessHeatingOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             try:
                 options = normalize_options(user_input)
-            except ValueError:
+            except ValueError as err:
                 return self.async_show_form(
                     step_id="init", errors={"base": "invalid_rooms"},
+                    description_placeholders={"error": str(err)},
                     data_schema=self._schema(user_input),
                 )
             controller = self.hass.data.get(DOMAIN, {}).get(self._entry.entry_id)
@@ -84,10 +86,40 @@ class ZonelessHeatingOptionsFlow(config_entries.OptionsFlow):
 
     def _schema(self, values=None):
         options = self._entry.options if values is None else values
+        rooms = options.get("rooms_json", [])
+        if isinstance(rooms, str):
+            rooms = json.loads(rooms)
         return vol.Schema({
             vol.Optional("monitor_only", default=options.get("monitor_only", True)): bool,
-            vol.Optional("rooms_json", default=options.get("rooms_json", "[]")): selector.TextSelector(
-                selector.TextSelectorConfig(multiline=True)
+            vol.Optional("rooms_json", default=rooms): selector.ObjectSelector(
+                selector.ObjectSelectorConfig(
+                    multiple=True, label_field="name", description_field="entity_id",
+                    fields={
+                        "name": {"label": "Name", "required": True, "selector": selector.TextSelector()},
+                        "entity_id": {
+                            "label": "Temperature sensor", "required": True,
+                            "selector": selector.EntitySelector(
+                                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+                            ),
+                        },
+                        **{
+                            key: {
+                                "label": label, "required": True,
+                                "selector": StrictNumberSelector(selector.NumberSelectorConfig(
+                                    min=-50, max=80, step="any", unit_of_measurement="°C",
+                                    mode=selector.NumberSelectorMode.BOX,
+                                )),
+                            }
+                            for key, label in (("min", "Minimum"), ("preferred", "Preferred"), ("max", "Maximum"))
+                        },
+                        "weight": {
+                            "label": "Weight", "required": True, "default": 1,
+                            "selector": StrictNumberSelector(selector.NumberSelectorConfig(
+                                min=0, max=100, step="any", mode=selector.NumberSelectorMode.BOX,
+                            )),
+                        },
+                    },
+                )
             ),
             **{
                 vol.Optional(key, default=options.get(key, DEFAULT_OPTIONS[key])): StrictNumberSelector(

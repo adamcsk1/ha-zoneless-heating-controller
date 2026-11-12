@@ -23,7 +23,7 @@ async def advance(hass, freezer, seconds=61):
 
 
 def option_input(options, **changes):
-    return {**options, **changes}
+    return {**options, "rooms_json": json.loads(options["rooms_json"]), **changes}
 
 
 async def test_cold_start_discards_unobserved_cycle_history(hass, options, relay_calls):
@@ -718,7 +718,7 @@ async def test_failed_live_reload_applies_all_committed_options(hass, options, r
     rooms[0]["preferred"] = 21
     changed = option_input(
         options, monitor_only=False, min_on_minutes=7,
-        max_overshoot=3, rooms_json=json.dumps(rooms),
+        max_overshoot=3, rooms_json=rooms,
     )
     original_unload = hass.config_entries.async_unload_platforms
 

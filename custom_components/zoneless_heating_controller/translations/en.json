@@ -21,10 +21,10 @@
     "step": {
       "init": {
         "title": "Heating settings and rooms",
-        "description": "Configure rooms_json as a JSON array. Each room needs name, entity_id, min, preferred, max, weight. Temperatures are Celsius. Start in monitor-only mode.",
+        "description": "Add or edit rooms using the room forms. Temperatures are Celsius and must satisfy minimum < preferred < maximum. Weight sets room priority and must be greater than 0. Start in monitor-only mode.",
         "data": {
           "monitor_only": "Monitor only (never operate boiler)",
-          "rooms_json": "Rooms (JSON array)",
+          "rooms_json": "Rooms",
           "min_on_minutes": "Minimum normal ON time (minutes)",
           "min_off_minutes": "Minimum OFF time (minutes)",
           "start_threshold": "Start demand threshold",
@@ -36,7 +36,7 @@
       }
     },
     "error": {
-      "invalid_rooms": "Invalid rooms or heating settings. Check JSON, finite numbers, entity IDs, ranges, and weights",
+      "invalid_rooms": "Check the rooms or heating settings: {error}",
       "monitor_shutdown_failed": "Monitor-only was not enabled because relay OFF could not be confirmed. The controller remains in live Manual OFF and will keep retrying"
     }
   },
