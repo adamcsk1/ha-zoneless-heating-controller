@@ -57,6 +57,9 @@
       }
     },
     "sensor": {
+      "effective_start_threshold": {
+        "name": "Effective start threshold"
+      },
       "demand": {
         "name": "Heating demand"
       },

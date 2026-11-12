@@ -63,6 +63,7 @@ class HeatingController:
 
         self.mode = MODE_AUTO
         self.demand = None
+        self.effective_start_threshold = None
         self.request_heat = False
         self.reason = "Not started"
         self.detail = "Controller has not started"
@@ -373,6 +374,7 @@ class HeatingController:
                 except Exception as err:
                     _LOGGER.exception("Heating evaluation failed; requesting relay OFF")
                     self.demand = None
+                    self.effective_start_threshold = None
                     self.request_heat = False
                     self.active_fault = "Controller error"
                     self.reason = "Controller error"
@@ -482,9 +484,10 @@ class HeatingController:
         self.demand = sum(scores) / sum(weights)
         self.overheated_rooms = overheated
         threshold = self.settings["start_threshold"]
-        threshold += 0.05 if outside >= 10 else (-0.05 if outside < 0 else 0)
+        threshold += max(-0.05, min(0.05, 0.01 * (outside - 5)))
         stop = self.settings["stop_threshold"]
         threshold = max(threshold, stop + 0.01)
+        self.effective_start_threshold = threshold
         if self.demand >= threshold:
             return True, "Heating demand"
         if self.demand <= stop:
@@ -508,6 +511,7 @@ class HeatingController:
             input_fault = None
         except InputFault as err:
             self.demand = None
+            self.effective_start_threshold = None
             self.sensor_fault = str(err)
             input_fault = self.sensor_fault
             automatic_request, automatic_reason = False, "Sensor fault"

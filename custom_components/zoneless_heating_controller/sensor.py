@@ -9,7 +9,9 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     controller = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([DemandSensor(controller, entry), ReasonSensor(controller, entry)])
+    async_add_entities([
+        DemandSensor(controller, entry), EffectiveStartThresholdSensor(controller, entry), ReasonSensor(controller, entry)
+    ])
 
 
 class BaseSensor(SensorEntity):
@@ -36,6 +38,18 @@ class DemandSensor(BaseSensor):
     @property
     def native_value(self):
         return round(self.controller.demand, 3) if self.controller.demand is not None else None
+
+
+class EffectiveStartThresholdSensor(BaseSensor):
+    key = "effective_start_threshold"
+    _attr_translation_key = "effective_start_threshold"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:gauge"
+
+    @property
+    def native_value(self):
+        value = self.controller.effective_start_threshold
+        return round(value, 3) if value is not None else None
 
 
 class ReasonSensor(BaseSensor):

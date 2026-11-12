@@ -87,6 +87,8 @@ entities:
     name: Mode
   - entity: sensor.zoneless_heating_heating_demand
     name: Heating demand
+  - entity: sensor.zoneless_heating_effective_start_threshold
+    name: Effective start threshold
   - entity: sensor.zoneless_heating_decision_reason
     name: Status
   - entity: switch.boiler_demand
@@ -111,7 +113,20 @@ Each room produces a score from `-1` to `+1`:
 - `0`: at its preferred temperature.
 - `-1`: at or above its maximum temperature.
 
-Scores are weighted by room priority. Auto starts above the start threshold and stops below the stop threshold; hysteresis retains the current state between them. Outdoor temperature adjusts the start threshold by `-0.05` below 0°C and `+0.05` at or above 10°C.
+Scores are weighted by room priority. Auto requests heating at or above the effective start threshold and requests a stop at or below the stop threshold; hysteresis retains the current state between them.
+
+Outdoor compensation varies continuously with outdoor temperature in Celsius:
+
+```text
+adjustment = clamp(0.01 × (outdoor_temperature − 5), −0.05, +0.05)
+effective_start = max(start_threshold + adjustment, stop_threshold + 0.01)
+```
+
+With the default start threshold of `0.20`, the effective threshold is `0.15` at or below 0°C, `0.20` at 5°C, and `0.25` at or above 10°C. Between these points it changes linearly, replacing the previous fixed `0.20` threshold between 0°C and 10°C.
+
+The **Effective start threshold** diagnostic sensor shows the final threshold, rounded to three decimals like Heating demand; control decisions use full precision. It is also calculated in monitor-only and manual modes, and becomes unknown when required inputs are invalid. Exceeding this threshold does not bypass cycle delays, recovery, or faults.
+
+To evaluate tuning, graph room temperatures, outdoor temperature, Heating demand, Effective start threshold, and the physical relay over several days with differing weather. Look for repeatable comfort or cycling problems before changing settings.
 
 A single shared relay cannot maintain an exact range in every room. Correct circuit balancing remains necessary.
 
